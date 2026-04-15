@@ -51,21 +51,37 @@ Instead of treating genre and mood as binary categorical matches (1 or 0),
 we encode them as vectors in a 2D space so partial similarity is captured.
 
 Genre embedding (energy_axis, acoustic_axis):
-  pop       → [0.7, 0.2]
-  rock      → [0.9, 0.1]
-  synthwave → [0.7, 0.1]
-  lofi      → [0.3, 0.8]
-  ambient   → [0.2, 0.9]
-  jazz      → [0.4, 0.7]
-  indie pop → [0.6, 0.3]
+  pop        → [0.7, 0.2]
+  rock       → [0.9, 0.1]
+  synthwave  → [0.7, 0.1]
+  lofi       → [0.3, 0.8]
+  ambient    → [0.2, 0.9]
+  jazz       → [0.4, 0.7]
+  indie pop  → [0.6, 0.3]
+  hip hop    → [0.7, 0.3]
+  r&b        → [0.5, 0.5]
+  classical  → [0.2, 0.9]
+  edm        → [0.9, 0.0]
+  folk       → [0.3, 0.9]
+  metal      → [1.0, 0.0]
+  country    → [0.5, 0.7]
+  soul       → [0.5, 0.6]
+  reggae     → [0.4, 0.5]
+  electronic → [0.8, 0.1]
 
 Mood embedding (valence_axis, arousal_axis):
-  happy   → [0.9, 0.7]
-  chill   → [0.6, 0.2]
-  intense → [0.4, 0.9]
-  moody   → [0.3, 0.5]
-  focused → [0.6, 0.5]
-  relaxed → [0.7, 0.2]
+  happy      → [0.9, 0.7]
+  chill      → [0.6, 0.2]
+  intense    → [0.4, 0.9]
+  moody      → [0.3, 0.5]
+  focused    → [0.6, 0.5]
+  relaxed    → [0.7, 0.2]
+  romantic   → [0.8, 0.4]
+  peaceful   → [0.7, 0.1]
+  sad        → [0.2, 0.3]
+  angry      → [0.2, 0.9]
+  melancholic → [0.3, 0.3]
+  energetic  → [0.7, 0.9]
 
 Similarity for embedded features uses cosine similarity:
   cosine_sim(a, b) = (a · b) / (||a|| × ||b||)
@@ -75,31 +91,39 @@ while pop and ambient score ~0.47 (very different axes) — more realistic than 
 
 ---
 
-Updated Scoring Rule (Numerical Genre + Mood)
-----------------------------------------------
-score(s, p) = w1 * cosine_sim(genre_vec(s), genre_vec(p))
-            + w2 * cosine_sim(mood_vec(s), mood_vec(p))
-            + w3 * (1 - |s.energy - p.energy|)
-            + w4 * (1 - |s.valence - p.valence|)
-            + w5 * (1 - |s.acousticness - p.acousticness|)
+Scoring Rule (All Attributes, Mood-Relative Weights)
+--------------------------------------------------------------
+score(s, p) = w_genre        * cosine_sim(genre_vec(s), genre_vec(p))
+            + w_mood         * cosine_sim(mood_vec(s), mood_vec(p))
+            + w_energy       * (1 - |s.energy - p.energy|)
+            + w_valence      * (1 - |s.valence - p.valence|)
+            + w_acousticness * (1 - |s.acousticness - p.acousticness|)
+            + w_danceability * (1 - |s.danceability - p.danceability|)
+            + w_tempo        * (1 - |s.tempo - p.tempo|)
 
-Weights (sum to 10):
-  w1 = 3.0  (genre)
-  w2 = 2.5  (mood)
-  w3 = 2.0  (energy)
-  w4 = 1.5  (valence)
-  w5 = 1.0  (acousticness)
+Weights (mood = 1.0 as base; all others relative to it):
+  w_genre        = 1.2   ← strongest preference signal, just above mood
+  w_mood         = 1.0   ← base weight
+  w_energy       = 0.8   ← most discriminating numeric feature
+  w_valence      = 0.6   ← emotional tone, independent of energy
+  w_acousticness = 0.5   ← texture/production style
+  w_danceability = 0.4   ← correlated with energy, adds nuance
+  w_tempo        = 0.3   ← weakest signal, most redundant with energy
 
-Genre and mood weights are slightly reduced from the categorical version (0.35/0.25)
-because cosine similarity already gives partial credit for close genres/moods,
-so the features carry more information per unit weight.
+Max possible score = 1.2 + 1.0 + 0.8 + 0.6 + 0.5 + 0.4 + 0.3 = 4.8
+  (when every feature is a perfect match)
+
+To get a normalized score in [0, 1]:
+  score_normalized(s, p) = score(s, p) / 4.8
 
 User profile p is computed from liked songs:
-  p.genre_vec     = mean of genre_vec across liked songs
-  p.mood_vec      = mean of mood_vec across liked songs
-  p.energy        = mean(liked_songs.energy)
-  p.valence       = mean(liked_songs.valence)
-  p.acousticness  = mean(liked_songs.acousticness)
+  p.genre_vec      = mean of genre_vec across liked songs
+  p.mood_vec       = mean of mood_vec across liked songs
+  p.energy         = mean(liked_songs.energy)
+  p.valence        = mean(liked_songs.valence)
+  p.acousticness   = mean(liked_songs.acousticness)
+  p.danceability   = mean(liked_songs.danceability)
+  p.tempo          = mean(liked_songs.tempo)
 
 ---
 

@@ -17,19 +17,20 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Real world recommendation systems have scores for different attributes of songs -- like genre, temp, mood, etc. and compare those attributes for the current/chosen song and possible songs to recommend. My system takes genre, mood, energy, valence, and acousticness into account. All of them are represented numerically -- energy, valence, and acousticness by score and genre and mood by vectors. For genre and mood, the recommendation system looks for cosine similarity and energy, valence, and acousticness look for similar values. In this system, genre and mood get the most weightage, making up 55% of the decisionmaking. 
-
 Some prompts to answer:
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+The user profile is stored in a taste profile -- similar to what is shown here. 
+{favorite_genre: lofi, 
+mood: peaceful, 
+energy: 0.35, 
+tempo_bpm: 60, 
+valence: 0.7, 
+danceability: 0.4, 
+acousticness: 0.9}
 
-You can include a simple diagram or bullet list if helpful.
+Real world recommendation systems have scores for different attributes of songs -- like genre, temp, mood, etc. and compare those attributes for the current/chosen song and possible songs to recommend. My system takes genre, mood, energy, valence, acousticnes, danceability, and tempo into account. All of them are represented numerically from 0 to 1 except with genre and mood by vectors. For genre and mood, the recommendation system looks for cosine similarity and the other attribues, it considers 1 minus the difference between the values. These values are then summed up with different weightages to find the score for the song match. In this system, genre and mood get the most weightage, making a little bit less than 50% of the decisionmaking. More details on how the score is generated can be found in recommendation_system.txt.
 
----
+The tool chooses songs to recommend by looping through the songs in the csv and finds the score for how well each one matches. A higher score indicates a better match. It's important to note that genre and mood are weighted much higher than danceability and tempo. So, songs with poorly matched danceability and tempo may be included. 
 
 ## Getting Started
 
@@ -209,3 +210,13 @@ A few sentences about what you learned:
 - How did building this change how you think about real music recommenders
 - Where do you think human judgment still matters, even if the model seems "smart"
 
+
+taste profile:
+
+favorite_genre: lofi
+mood: chill
+energy: 0.35
+tempo_bpm: 0.05
+valence: 0.58
+danceability: 0.4
+acousticness: 0.75

@@ -1,0 +1,44 @@
+Collaborative filtering- plays, skips, saves, watch time
+Content-based filtering-- audio features (tempo, mood, energy, valence, danceability, acousticness, insrtumentalness, loudness, key), lyrics, transcripts, tags, visuals
+
+Recommendation Data
+├── Behavioral (Event Streams)
+│   ├── Play / Skip / Save / Repeat  →  Boolean, Enum, Integer, Timestamp
+│   └── Watch time / Session length  →  Float
+│
+├── User Profile
+│   ├── Demographics               →  Categorical
+│   ├── Context (time, device)     →  Categorical + Temporal
+│   └── Latent taste vector        →  Dense Float Array (40–200d)
+│
+├── Audio Features (Spotify-specific)
+│   ├── Scalar features            →  Float (0.0–1.0 range)
+│   └── Deep audio embeddings      →  Dense Float Array (~128d)
+│
+├── Item Metadata
+│   ├── IDs, dates, flags          →  String, Date, Boolean
+│   └── Genre / language tags      →  Categorical / List of Strings
+│
+├── Text / NLP
+│   ├── Raw text                   →  String (never used directly)
+│   └── Embeddings                 →  Dense Float Array (100–768d)
+│
+└── Inferred / Derived
+    ├── Mood scores                →  Float (often 0.0–1.0 per mood class)
+    └── Popularity / freshness     →  Float + Timestamp
+
+Spotify has no star ratings. It learns from implicit signals:
+- Stream >30 seconds → positive signal
+- Hard skip <30 seconds → negative signal
+- Save / add-to-playlist → strong positive
+- Repeat plays → very strong positive
+
+Claude's best reocommendation:
+- genre + mood + energy + valence
+- skip: tempo_bpm because redundant with energy
+- skip: danceability and nuance but complicate a similarity calculation
+
+I generally agree that tempo_bpm, energy, and danceability are laregely the same but I think acousticness
+adds some specific nuance.
+
+Algorithm Recipe: genre + mood + energy + valence + acousticness

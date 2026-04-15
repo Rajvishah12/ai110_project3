@@ -45,85 +45,37 @@ Algorithm Recipe: genre + mood + energy + valence + acousticness
 
 ---
 
-Numerical Encoding of Genre and Mood
---------------------------------------
-Instead of treating genre and mood as binary categorical matches (1 or 0),
-we encode them as vectors in a 2D space so partial similarity is captured.
-
-Genre embedding (energy_axis, acoustic_axis):
-  pop        → [0.7, 0.2]
-  rock       → [0.9, 0.1]
-  synthwave  → [0.7, 0.1]
-  lofi       → [0.3, 0.8]
-  ambient    → [0.2, 0.9]
-  jazz       → [0.4, 0.7]
-  indie pop  → [0.6, 0.3]
-  hip hop    → [0.7, 0.3]
-  r&b        → [0.5, 0.5]
-  classical  → [0.2, 0.9]
-  edm        → [0.9, 0.0]
-  folk       → [0.3, 0.9]
-  metal      → [1.0, 0.0]
-  country    → [0.5, 0.7]
-  soul       → [0.5, 0.6]
-  reggae     → [0.4, 0.5]
-  electronic → [0.8, 0.1]
-
-Mood embedding (valence_axis, arousal_axis):
-  happy      → [0.9, 0.7]
-  chill      → [0.6, 0.2]
-  intense    → [0.4, 0.9]
-  moody      → [0.3, 0.5]
-  focused    → [0.6, 0.5]
-  relaxed    → [0.7, 0.2]
-  romantic   → [0.8, 0.4]
-  peaceful   → [0.7, 0.1]
-  sad        → [0.2, 0.3]
-  angry      → [0.2, 0.9]
-  melancholic → [0.3, 0.3]
-  energetic  → [0.7, 0.9]
-
-Similarity for embedded features uses cosine similarity:
-  cosine_sim(a, b) = (a · b) / (||a|| × ||b||)
-
-This means pop and synthwave score ~0.98 similarity (both high energy, low acoustic),
-while pop and ambient score ~0.47 (very different axes) — more realistic than binary 0 or 1.
-
----
-
-Scoring Rule (All Attributes, Mood-Relative Weights)
+Scoring Rule (genre, mood, energy, acousticness — Mood-Relative Weights)
 --------------------------------------------------------------
-score(s, p) = w_genre        * cosine_sim(genre_vec(s), genre_vec(p))
-            + w_mood         * cosine_sim(mood_vec(s), mood_vec(p))
+score(s, p) = w_genre        * match(s.genre, p.genre)
+            + w_mood         * match(s.mood, p.mood)
             + w_energy       * (1 - |s.energy - p.energy|)
-            + w_valence      * (1 - |s.valence - p.valence|)
-            + w_acousticness * (1 - |s.acousticness - p.acousticness|)
-            + w_danceability * (1 - |s.danceability - p.danceability|)
-            + w_tempo        * (1 - |s.tempo - p.tempo|)
+            + w_acousticness * match(round(s.acousticness), p.likes_acoustic)
+
+Where:
+  match(a, b)       = 1  if a == b
+                      0  otherwise
+  round(x)          = 1  if x >= 0.5  (acoustic)
+                      0  if x <  0.5  (not acoustic)
+  p.likes_acoustic  = 1 or 0  (user binary preference)
 
 Weights (mood = 1.0 as base; all others relative to it):
-  w_genre        = 1.2   ← strongest preference signal, just above mood
+  w_genre        = 2.0   ← strongest preference signal
   w_mood         = 1.0   ← base weight
   w_energy       = 0.8   ← most discriminating numeric feature
-  w_valence      = 0.6   ← emotional tone, independent of energy
-  w_acousticness = 0.5   ← texture/production style
-  w_danceability = 0.4   ← correlated with energy, adds nuance
-  w_tempo        = 0.3   ← weakest signal, most redundant with energy
+  w_acousticness = 0.5   ← binary texture check
 
-Max possible score = 1.2 + 1.0 + 0.8 + 0.6 + 0.5 + 0.4 + 0.3 = 4.8
+Max possible score = 2.0 + 1.0 + 0.8 + 0.5 = 4.3
   (when every feature is a perfect match)
 
 To get a normalized score in [0, 1]:
-  score_normalized(s, p) = score(s, p) / 4.8
+  score_normalized(s, p) = score(s, p) / 3.5
 
 User profile p is computed from liked songs:
-  p.genre_vec      = mean of genre_vec across liked songs
-  p.mood_vec       = mean of mood_vec across liked songs
+  p.genre          = most_common(liked_songs.genre)
+  p.mood           = most_common(liked_songs.mood)
   p.energy         = mean(liked_songs.energy)
-  p.valence        = mean(liked_songs.valence)
-  p.acousticness   = mean(liked_songs.acousticness)
-  p.danceability   = mean(liked_songs.danceability)
-  p.tempo          = mean(liked_songs.tempo)
+  p.likes_acoustic = 1 if mean(liked_songs.acousticness) >= 0.5 else 0
 
 ---
 

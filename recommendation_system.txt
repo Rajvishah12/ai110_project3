@@ -1,0 +1,116 @@
+Collaborative filtering- plays, skips, saves, watch time
+Content-based filtering-- audio features (tempo, mood, energy, valence, danceability, acousticness, insrtumentalness, loudness, key), lyrics, transcripts, tags, visuals
+
+Recommendation Data
+├── Behavioral (Event Streams)
+│   ├── Play / Skip / Save / Repeat  →  Boolean, Enum, Integer, Timestamp
+│   └── Watch time / Session length  →  Float
+│
+├── User Profile
+│   ├── Demographics               →  Categorical
+│   ├── Context (time, device)     →  Categorical + Temporal
+│   └── Latent taste vector        →  Dense Float Array (40–200d)
+│
+├── Audio Features (Spotify-specific)
+│   ├── Scalar features            →  Float (0.0–1.0 range)
+│   └── Deep audio embeddings      →  Dense Float Array (~128d)
+│
+├── Item Metadata
+│   ├── IDs, dates, flags          →  String, Date, Boolean
+│   └── Genre / language tags      →  Categorical / List of Strings
+│
+├── Text / NLP
+│   ├── Raw text                   →  String (never used directly)
+│   └── Embeddings                 →  Dense Float Array (100–768d)
+│
+└── Inferred / Derived
+    ├── Mood scores                →  Float (often 0.0–1.0 per mood class)
+    └── Popularity / freshness     →  Float + Timestamp
+
+Spotify has no star ratings. It learns from implicit signals:
+- Stream >30 seconds → positive signal
+- Hard skip <30 seconds → negative signal
+- Save / add-to-playlist → strong positive
+- Repeat plays → very strong positive
+
+Claude's best recommendation:
+- genre + mood + energy + valence
+- skip: tempo_bpm because redundant with energy
+- skip: danceability and acousticness complicate a similarity calculation
+
+I generally agree that tempo_bpm, energy, and danceability are largely the same but I think acousticness
+adds some specific nuance.
+
+Algorithm Recipe: genre + mood + energy + valence + acousticness
+
+---
+
+Numerical Encoding of Genre and Mood
+--------------------------------------
+Instead of treating genre and mood as binary categorical matches (1 or 0),
+we encode them as vectors in a 2D space so partial similarity is captured.
+
+Genre embedding (energy_axis, acoustic_axis):
+  pop       → [0.7, 0.2]
+  rock      → [0.9, 0.1]
+  synthwave → [0.7, 0.1]
+  lofi      → [0.3, 0.8]
+  ambient   → [0.2, 0.9]
+  jazz      → [0.4, 0.7]
+  indie pop → [0.6, 0.3]
+
+Mood embedding (valence_axis, arousal_axis):
+  happy   → [0.9, 0.7]
+  chill   → [0.6, 0.2]
+  intense → [0.4, 0.9]
+  moody   → [0.3, 0.5]
+  focused → [0.6, 0.5]
+  relaxed → [0.7, 0.2]
+
+Similarity for embedded features uses cosine similarity:
+  cosine_sim(a, b) = (a · b) / (||a|| × ||b||)
+
+This means pop and synthwave score ~0.98 similarity (both high energy, low acoustic),
+while pop and ambient score ~0.47 (very different axes) — more realistic than binary 0 or 1.
+
+---
+
+Updated Scoring Rule (Numerical Genre + Mood)
+----------------------------------------------
+score(s, p) = w1 * cosine_sim(genre_vec(s), genre_vec(p))
+            + w2 * cosine_sim(mood_vec(s), mood_vec(p))
+            + w3 * (1 - |s.energy - p.energy|)
+            + w4 * (1 - |s.valence - p.valence|)
+            + w5 * (1 - |s.acousticness - p.acousticness|)
+
+Weights (sum to 10):
+  w1 = 3.0  (genre)
+  w2 = 2.5  (mood)
+  w3 = 2.0  (energy)
+  w4 = 1.5  (valence)
+  w5 = 1.0  (acousticness)
+
+Genre and mood weights are slightly reduced from the categorical version (0.35/0.25)
+because cosine similarity already gives partial credit for close genres/moods,
+so the features carry more information per unit weight.
+
+User profile p is computed from liked songs:
+  p.genre_vec     = mean of genre_vec across liked songs
+  p.mood_vec      = mean of mood_vec across liked songs
+  p.energy        = mean(liked_songs.energy)
+  p.valence       = mean(liked_songs.valence)
+  p.acousticness  = mean(liked_songs.acousticness)
+
+---
+
+Ranking Rule
+-------------
+After computing score(s, p) for every unheard song s:
+
+1. Sort all candidate songs by score descending.
+2. Return top-k (e.g. k=3 for this dataset).
+3. Tiebreaker: if two songs have scores within 0.01 of each other,
+   prefer the one with energy closer to p.energy (most context-sensitive feature).
+
+Final ranking formula:
+  rank = sorted by score DESC, then by |s.energy - p.energy| ASC on ties

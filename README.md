@@ -17,7 +17,7 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Real world recommendation systems have scores for different attributes of songs -- like genre, temp, mood, etc. and compare those attributes for the current/chosen song and possible songs to recommend. My system takes genre, mood, energy, valence, and acousticness into account. All of them are represented numerically -- energy, valence, and acousticness by score and genre and mood by vectors. For genre and mood, the recommendation system looks for cosine similarity and energy, valence, and acousticness look for similar values. In this system, genre and mood get the most weightage, making up 55% of the decisionmaking. 
 
 Some prompts to answer:
 

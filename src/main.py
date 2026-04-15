@@ -16,7 +16,10 @@ def main() -> None:
     print("Loaded songs:", len(songs))
 
     # Starter example profile
-    user_prefs = {"genre": "pop", "mood": "happy", "energy": 0.8, "likes_acoustic": False}
+    # user_prefs = {"genre": "pop", "mood": "happy", "energy": 0.8, "likes_acoustic": False}
+    # user_prefs = {"genre": "pop", "mood": "intense", "energy": 0.5, "likes_acoustic": False} # additional test 1
+    # user_prefs = user_prefs = {"genre": "jazz", "mood": "moody", "energy": 0.2, "likes_acoustic": True} # additional test 2
+    user_prefs = {"genre": "lofi", "mood": "relaxed", "energy": 0.2, "likes_acoustic": True} # additional test 3
 
     recommendations = recommend_songs(user_prefs, songs, k=5)
 
